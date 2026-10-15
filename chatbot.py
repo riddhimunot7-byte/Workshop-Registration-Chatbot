@@ -1,78 +1,152 @@
 import streamlit as st
-import pandas as pd
-import os
-from datetime import datetime
 
-st.set_page_config(page_title="Workshop Chatbot", page_icon="🎓")
+st.set_page_config(
+    page_title="Workshop AI Assistant",
+    page_icon="💜",
+    layout="wide"
+)
 
-st.title("🎓 Workshop Registration Chatbot")
-st.write("Hello! Ask me about workshops or register below.")
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(135deg, #100b24, #21113d, #101827);
+    color: #ffffff;
+}
+[data-testid="stSidebar"] {
+    background: #17102b;
+}
+h1, h2, h3, p, label {
+    color: #f5f0ff !important;
+}
+div.stButton > button {
+    background: linear-gradient(90deg, #8b5cf6, #c084fc);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+}
+div.stButton > button:hover {
+    border: 1px solid #e9d5ff;
+    color: white;
+}
+div[data-testid="stForm"] {
+    background: #21183a;
+    border: 1px solid #6544a5;
+    padding: 20px;
+    border-radius: 16px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-workshops = [
-    "Python Programming",
-    "Artificial Intelligence and Machine Learning",
-    "Web Development",
-    "Cyber Security"
-]
+with st.sidebar:
+    st.title("💜 Workshop AI")
+    st.write("Your workshop companion")
+    st.divider()
+    page = st.radio(
+        "Navigate",
+        ["AI Assistant", "Register", "Workshop Info"]
+    )
+    st.caption("✨ Learn. Connect. Build.")
 
-question = st.chat_input("Ask me something...")
+st.title("💜 Workshop Registration Assistant")
+st.write("Your smart companion for discovering workshops and getting started.")
 
-if question:
-    st.chat_message("user").write(question)
+if page == "AI Assistant":
+    st.subheader("🤖 Chat with the Assistant")
 
-    q = question.lower()
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    if "workshop" in q or "available" in q:
-        answer = "Available workshops:\n" + "\n".join(
-            f"{i+1}. {w}" for i, w in enumerate(workshops)
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    prompt = st.chat_input("Ask me about workshops...")
+
+    if prompt:
+        st.session_state.messages.append(
+            {"role": "user", "content": prompt}
         )
-    elif "python" in q:
-        answer = "Python Programming teaches Python basics and programming."
-    elif "artificial intelligence" in q or "ai" in q:
-        answer = "The AI/ML workshop introduces artificial intelligence and machine learning."
-    elif "web" in q:
-        answer = "The Web Development workshop introduces website development."
-    elif "cyber" in q:
-        answer = "The Cyber Security workshop introduces online safety and security."
-    elif "register" in q or "registration" in q:
-        answer = "Please fill in the registration form below!"
-    elif "hello" in q or "hi" in q:
-        answer = "Hello! 😊 Welcome to the Workshop Registration Assistant."
-    else:
-        answer = (
-            "I can help with Python, AI/ML, Web Development, "
-            "Cyber Security, and workshop registration. "
-            "Please ask me about one of these topics."
+
+        q = prompt.lower()
+
+        if "python" in q:
+            answer = "🐍 **Python Workshop**\n\nLearn Python basics, variables, loops, functions, and build beginner-friendly projects."
+        elif "ai" in q or "machine learning" in q:
+            answer = "🤖 **AI & Machine Learning Workshop**\n\nExplore AI concepts, machine learning basics, and real-world applications."
+        elif "web" in q:
+            answer = "🌐 **Web Development Workshop**\n\nLearn HTML, CSS, and JavaScript to create interactive websites."
+        elif "cyber" in q or "security" in q:
+            answer = "🔐 **Cyber Security Workshop**\n\nDiscover online safety, security fundamentals, and common cyber threats."
+        elif "register" in q or "registration" in q:
+            answer = "📝 Open the **Register** section from the sidebar to fill out the workshop registration form."
+        elif any(word in q for word in ["hello", "hi", "hey"]):
+            answer = "Hey there! 👋 Welcome! Ask me about Python, AI, Web Development, Cyber Security, or registration."
+        elif "duration" in q or "time" in q:
+            answer = "⏰ Workshop duration depends on the event schedule. Please check with the workshop organiser for confirmed timings."
+        elif "college" in q or "certificate" in q:
+            answer = "🎓 For college-specific details and certificates, please contact the workshop organiser."
+        else:
+            answer = "💜 I can help with Python, AI & Machine Learning, Web Development, Cyber Security, and registration. What would you like to explore?"
+
+        st.session_state.messages.append(
+            {"role": "assistant", "content": answer}
+        )
+        st.rerun()
+
+    if st.button("🗑️ Clear Chat"):
+        st.session_state.messages = []
+        st.rerun()
+
+elif page == "Register":
+    st.subheader("📝 Workshop Registration")
+    st.write("Complete this demo form to see your confirmation.")
+
+    with st.form("registration_form"):
+        name = st.text_input("Full Name")
+        email = st.text_input("Email Address")
+        college = st.text_input("College Name")
+
+        workshop = st.selectbox(
+            "Choose Your Workshop",
+            [
+                "Python Programming",
+                "Artificial Intelligence",
+                "Web Development",
+                "Cyber Security"
+            ]
         )
 
-    st.chat_message("assistant").write(answer)
-
-st.divider()
-st.header("📝 Workshop Registration")
-
-with st.form("registration_form"):
-    name = st.text_input("Full Name")
-    email = st.text_input("Email Address")
-    workshop = st.selectbox("Choose a Workshop", workshops)
-
-    submitted = st.form_submit_button("Register")
+        submitted = st.form_submit_button("Submit Registration")
 
     if submitted:
-        if not name.strip() or not email.strip() or "@" not in email:
-            st.error("Please enter a valid name and email.")
+        if not name.strip() or not college.strip():
+            st.error("Please fill in your name and college.")
+        elif "@" not in email or "." not in email.split("@")[-1]:
+            st.error("Please enter a valid email address.")
         else:
-            file = "registrations.csv"
+            st.success("🎉 Registration submitted successfully!")
+            st.info(
+                f"Thank you, {name}! You selected **{workshop}**."
+            )
+            st.caption(
+                "Demo only: your details are not permanently stored."
+            )
 
-            data = pd.DataFrame([{
-                "Name": name,
-                "Email": email,
-                "Workshop": workshop,
-                "Date": datetime.now().strftime("%Y-%m-%d")
-            }])
+elif page == "Workshop Info":
+    st.subheader("✨ Explore Our Workshops")
 
-            if os.path.exists(file):
-                data.to_csv(file, mode="a", header=False, index=False)
-            else:
-                data.to_csv(file, index=False)
+    workshops = [
+        ("🐍 Python Programming", "Programming fundamentals, loops, functions, and beginner projects."),
+        ("🤖 Artificial Intelligence", "AI concepts, machine learning basics, and practical applications."),
+        ("🌐 Web Development", "HTML, CSS, JavaScript, and website development."),
+        ("🔐 Cyber Security", "Digital safety, security basics, and cyber awareness.")
+    ]
 
-            st.success("Registration completed successfully!")
+    for title, description in workshops:
+        with st.container(border=True):
+            st.markdown(f"### {title}")
+            st.write(description)
+
+st.divider()
+st.caption("💜 Workshop AI Assistant | Interactive Demo")
