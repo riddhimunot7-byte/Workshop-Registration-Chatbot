@@ -2,512 +2,841 @@ import streamlit as st
 import re
 
 st.set_page_config(
-    page_title="Workshop Registration Assistant",
+    page_title="WorkshopHub | Learn & Grow",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# ---------- PROFESSIONAL CSS ----------
+# -------------------- WORKSHOP DATA --------------------
+
+WORKSHOPS = {
+    "Python Programming": {
+        "icon": "🐍",
+        "category": "PROGRAMMING",
+        "duration": "2 Days",
+        "level": "Beginner",
+        "description": (
+            "Master Python basics, variables, loops, functions "
+            "and problem-solving."
+        ),
+        "color": "#E8F2FF"
+    },
+    "Artificial Intelligence": {
+        "icon": "🤖",
+        "category": "ARTIFICIAL INTELLIGENCE",
+        "duration": "3 Days",
+        "level": "Beginner",
+        "description": (
+            "Explore AI fundamentals, intelligent systems "
+            "and real-world applications."
+        ),
+        "color": "#F0EAFE"
+    },
+    "Web Development": {
+        "icon": "💻",
+        "category": "WEB TECHNOLOGY",
+        "duration": "2 Days",
+        "level": "Beginner",
+        "description": (
+            "Discover HTML, CSS and JavaScript and learn "
+            "how modern websites are built."
+        ),
+        "color": "#E5F8F1"
+    },
+    "Cyber Security": {
+        "icon": "🔐",
+        "category": "DIGITAL SECURITY",
+        "duration": "2 Days",
+        "level": "Beginner",
+        "description": (
+            "Understand online safety, cybersecurity "
+            "fundamentals and common digital threats."
+        ),
+        "color": "#FFF0E7"
+    }
+}
+
+# -------------------- SESSION STATE --------------------
+
+defaults = {
+    "page": "Home",
+    "messages": [],
+    "registration": None,
+    "selected_workshop": "Python Programming",
+    "pending_question": None
+}
+
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# -------------------- CUSTOM CSS --------------------
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --navy: #142D4E;
+    --blue: #316BEB;
+    --muted: #718096;
+    --border: #E4EAF3;
+}
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
 .stApp {
-    background: #f5f8fc;
-    color: #172b4d;
+    background: #F7F9FD;
+    color: var(--navy);
 }
 
 [data-testid="stSidebar"] {
-    background: #ffffff;
-    border-right: 1px solid #e5ebf3;
+    display: none;
+}
+
+.block-container {
+    max-width: 1200px;
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+}
+
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
+.navbar {
+    background: #FFFFFF;
+    border: 1px solid #E6ECF5;
+    border-radius: 16px;
+    padding: 16px 22px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.brand {
+    font-size: 22px;
+    font-weight: 800;
+    color: #17365F;
+    white-space: nowrap;
+}
+
+.brand span {
+    color: #3975ED;
+}
+
+.brand-subtitle {
+    font-size: 10px;
+    color: #8795A9;
+    letter-spacing: 1.4px;
+    margin-top: 3px;
 }
 
 .hero {
-    background: linear-gradient(120deg, #ffffff, #edf6ff);
-    padding: 35px;
-    border-radius: 22px;
-    border: 1px solid #dceaff;
-    margin-bottom: 25px;
+    background: linear-gradient(115deg, #FFFFFF 15%, #EAF3FF 75%, #F1EDFF);
+    border: 1px solid #DDE8F8;
+    border-radius: 24px;
+    padding: 42px;
+    margin-bottom: 30px;
+}
+
+.eyebrow {
+    display: inline-block;
+    color: #285CC7;
+    background: #E0EBFF;
+    border-radius: 30px;
+    padding: 8px 13px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
 }
 
 .hero h1 {
-    color: #163b70;
-    font-size: 34px;
+    color: #17365F;
+    font-size: clamp(34px, 5vw, 52px);
     font-weight: 800;
-    margin-bottom: 10px;
+    line-height: 1.15;
+    margin: 22px 0 14px;
+    letter-spacing: -1.5px;
+}
+
+.gradient-text {
+    color: #3975ED;
 }
 
 .hero p {
-    color: #64748b;
+    color: #687991;
+    line-height: 1.85;
+    font-size: 15px;
+    max-width: 680px;
+}
+
+.section-heading {
+    color: #17365F;
+    font-size: 27px;
+    font-weight: 800;
+    margin: 12px 0 7px;
+}
+
+.section-subtitle {
+    color: #718096;
+    font-size: 14px;
+    margin-bottom: 22px;
+}
+
+.workshop-card {
+    background: white;
+    border: 1px solid #E4EAF3;
+    border-radius: 19px;
+    padding: 23px;
+    min-height: 245px;
+    margin-bottom: 12px;
+    transition: 0.2s ease;
+}
+
+.workshop-card:hover {
+    border-color: #9DBCF7;
+    box-shadow: 0 10px 30px rgba(36, 83, 151, 0.08);
+}
+
+.workshop-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    font-size: 27px;
+    margin-bottom: 15px;
+}
+
+.category {
+    color: #5378BC;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.workshop-card h3 {
+    color: #17365F;
+    font-size: 19px;
+    margin: 10px 0;
+    font-weight: 750;
+}
+
+.workshop-card p {
+    color: #718096;
+    font-size: 13px;
+    line-height: 1.7;
+    min-height: 65px;
+}
+
+.meta {
+    color: #62748C;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 12px;
+}
+
+.feature-card {
+    background: #FFFFFF;
+    border: 1px solid #E4EAF3;
+    border-radius: 16px;
+    padding: 22px;
+    min-height: 145px;
+    margin-bottom: 12px;
+}
+
+.feature-card h3 {
+    color: #17365F;
     font-size: 16px;
+    font-weight: 750;
+}
+
+.feature-card p {
+    color: #718096;
+    font-size: 13px;
     line-height: 1.7;
 }
 
-.section-title {
-    font-size: 24px;
-    font-weight: 750;
-    color: #163b70;
-    margin: 15px 0;
-}
-
-.info-card {
-    background: white;
-    padding: 22px;
-    border-radius: 16px;
-    border: 1px solid #e3eaf4;
-    min-height: 155px;
-    margin-bottom: 12px;
-}
-
-.info-card h3 {
-    color: #1d4ed8;
-    font-size: 19px;
-}
-
-.info-card p {
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.badge {
-    display: inline-block;
-    padding: 7px 12px;
-    border-radius: 30px;
-    background: #dbeafe;
-    color: #1d4ed8;
-    font-size: 12px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-div.stButton > button {
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-weight: 600;
-    min-height: 42px;
-}
-
-div.stButton > button:hover {
-    background: #1d4ed8;
-    color: white;
-}
-
-div[data-testid="stFormSubmitButton"] button {
-    background: #2563eb;
-    color: white;
-    border-radius: 10px;
-    border: none;
-    font-weight: 700;
-    width: 100%;
+.info-banner {
+    background: #EDF4FF;
+    border: 1px solid #DCE9FF;
+    padding: 19px 22px;
+    border-radius: 15px;
+    margin: 20px 0;
+    color: #28528D;
+    line-height: 1.7;
 }
 
 .footer {
+    border-top: 1px solid #E4EAF3;
+    padding-top: 22px;
+    margin-top: 38px;
     text-align: center;
-    color: #94a3b8;
-    padding: 25px 0;
+    color: #8996A8;
     font-size: 12px;
+    line-height: 2;
+}
+
+div.stButton > button {
+    border-radius: 10px;
+    font-weight: 650;
+    min-height: 42px;
+    transition: 0.2s ease;
+}
+
+div.stButton > button[kind="primary"] {
+    background: #316BEB;
+    color: white;
+    border: 1px solid #316BEB;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: #2457C6;
+    border-color: #2457C6;
+}
+
+div.stButton > button[kind="secondary"] {
+    background: white;
+    color: #24456E;
+    border: 1px solid #DCE5F1;
+}
+
+div[data-testid="stForm"] {
+    background: #FFFFFF;
+    padding: 24px;
+    border-radius: 18px;
+    border: 1px solid #E4EAF3;
 }
 
 div[data-testid="stChatMessage"] {
-    background: white;
-    border: 1px solid #e5ebf3;
+    background: #FFFFFF;
+    border: 1px solid #E4EAF3;
     border-radius: 14px;
-    padding: 12px;
+}
+
+[data-testid="stChatInput"] {
+    border-radius: 15px;
+}
+
+@media (max-width: 700px) {
+    .hero {
+        padding: 25px;
+    }
+
+    .navbar {
+        padding: 13px;
+    }
+
+    .brand {
+        font-size: 18px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- WORKSHOP DATA ----------
-workshops = {
-    "Python Programming": {
-        "description": "Learn Python fundamentals, variables, loops, functions and practical coding.",
-        "duration": "2 days",
-        "level": "Beginner",
-        "icon": "🐍"
-    },
-    "Artificial Intelligence": {
-        "description": "Explore AI fundamentals, real-world applications and intelligent systems.",
-        "duration": "3 days",
-        "level": "Beginner",
-        "icon": "🤖"
-    },
-    "Web Development": {
-        "description": "Discover HTML, CSS and JavaScript while learning how websites are built.",
-        "duration": "2 days",
-        "level": "Beginner",
-        "icon": "💻"
-    },
-    "Cyber Security": {
-        "description": "Understand online safety, cybersecurity fundamentals and common threats.",
-        "duration": "2 days",
-        "level": "Beginner",
-        "icon": "🔐"
-    }
-}
 
-# ---------- SESSION STATE ----------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# -------------------- NAVIGATION --------------------
 
-if "registered" not in st.session_state:
-    st.session_state.registered = False
+def navigate(page):
+    st.session_state.page = page
+    st.rerun()
 
-if "registration_info" not in st.session_state:
-    st.session_state.registration_info = None
 
-# ---------- SIDEBAR ----------
-with st.sidebar:
-    st.markdown("## 🎓 WorkshopHub")
-    st.caption("Workshop Registration Assistant")
-    st.divider()
+nav_left, nav_middle, nav_right = st.columns([2.0, 4.8, 1.5])
 
-    page = st.radio(
-        "NAVIGATION",
-        [
-            "🏠 Home",
-            "🤖 AI Assistant",
-            "📝 Register",
-            "📚 Explore Workshops"
-        ],
-        label_visibility="collapsed"
+with nav_left:
+    st.markdown("""
+    <div style="padding-top:5px">
+        <div class="brand">🎓 Workshop<span>Hub</span></div>
+        <div class="brand-subtitle">LEARN · BUILD · GROW</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with nav_middle:
+    n1, n2, n3, n4 = st.columns(4)
+
+    with n1:
+        if st.button("🏠 Home", use_container_width=True):
+            navigate("Home")
+
+    with n2:
+        if st.button("📚 Workshops", use_container_width=True):
+            navigate("Workshops")
+
+    with n3:
+        if st.button("🤖 Assistant", use_container_width=True):
+            navigate("Assistant")
+
+    with n4:
+        if st.button("📝 Register", use_container_width=True):
+            navigate("Register")
+
+with nav_right:
+    st.markdown(
+        "<div style='text-align:right;padding-top:10px;"
+        "color:#74849B;font-size:12px;font-weight:600'>"
+        "● Demo Portal</div>",
+        unsafe_allow_html=True
     )
 
-    st.divider()
+st.divider()
 
-    st.markdown("### 💡 Need help?")
-    st.write("Ask the assistant about workshops, duration, certificates or registration.")
 
-    st.divider()
-    st.caption("Academic Project · Demo Version")
+# -------------------- HOME PAGE --------------------
 
-# ---------- HOME ----------
-if page == "🏠 Home":
+def home_page():
 
     st.markdown("""
     <div class="hero">
-        <span class="badge">WORKSHOP REGISTRATION PORTAL</span>
-        <h1>Learn Something New.<br>Build Your Future.</h1>
+        <span class="eyebrow">✨ YOUR LEARNING JOURNEY STARTS HERE</span>
+        <h1>Discover Skills.<br>
+        <span class="gradient-text">Build Your Future.</span></h1>
         <p>
-        Discover practical workshops, explore new technologies and take
-        the next step in your learning journey. Use our assistant to get
-        quick answers or explore the available workshops.
+        Explore technology workshops, discover new interests and develop
+        practical skills. Your next learning opportunity is just a click away.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="section-title">Your learning starts here</div>',
-                unsafe_allow_html=True)
+    hero_left, hero_right = st.columns([1.2, 1])
 
-    col1, col2, col3 = st.columns(3)
+    with hero_left:
+        if st.button(
+            "📚  Explore Workshops  →",
+            type="primary",
+            use_container_width=True
+        ):
+            navigate("Workshops")
 
-    with col1:
-        st.markdown("""
-        <div class="info-card">
-            <h3>📚 Explore</h3>
-            <p>Discover workshops in programming, AI, web development and cybersecurity.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    with hero_right:
+        if st.button(
+            "🤖  Chat with Assistant",
+            use_container_width=True
+        ):
+            navigate("Assistant")
 
-    with col2:
-        st.markdown("""
-        <div class="info-card">
-            <h3>🤖 Get Answers</h3>
-            <p>Ask our workshop assistant about topics, duration and registration.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.write("")
 
-    with col3:
-        st.markdown("""
-        <div class="info-card">
-            <h3>📝 Register</h3>
-            <p>Complete the demo registration form and see your submission confirmation.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown('<div class="section-title">Featured Workshops</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-heading">Explore Our Workshops</div>'
+        '<div class="section-subtitle">'
+        'Practical learning opportunities for curious minds.</div>',
+        unsafe_allow_html=True
+    )
 
     cols = st.columns(2)
 
-    for i, (name, details) in enumerate(workshops.items()):
+    for i, (name, data) in enumerate(WORKSHOPS.items()):
         with cols[i % 2]:
             st.markdown(f"""
-            <div class="info-card">
-                <h3>{details['icon']} {name}</h3>
-                <p>{details['description']}</p>
-                <span class="badge">{details['duration']} · {details['level']}</span>
+            <div class="workshop-card">
+                <div class="workshop-icon"
+                     style="background:{data['color']}">
+                    {data['icon']}
+                </div>
+                <div class="category">{data['category']}</div>
+                <h3>{name}</h3>
+                <p>{data['description']}</p>
+                <div class="meta">
+                    🕒 {data['duration']} &nbsp; · &nbsp;
+                    🎯 {data['level']}
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-    if st.button("Explore All Workshops →"):
-        st.info("Choose 'Explore Workshops' from the sidebar.")
+            if st.button(
+                f"Explore {name} →",
+                key=f"home_{name}",
+                use_container_width=True
+            ):
+                st.session_state.selected_workshop = name
+                navigate("Workshops")
 
-# ---------- WORKSHOP EXPLORER ----------
-elif page == "📚 Explore Workshops":
+    st.markdown(
+        '<div class="section-heading">Why WorkshopHub?</div>'
+        '<div class="section-subtitle">'
+        'Everything you need to explore your next learning opportunity.'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    f1, f2, f3 = st.columns(3)
+
+    features = [
+        ("🎯", "Easy Discovery",
+         "Explore workshops by topic, duration and skill level."),
+        ("💬", "Interactive Assistant",
+         "Get quick answers to common workshop questions."),
+        ("📝", "Simple Registration",
+         "Try the guided registration process in a few steps.")
+    ]
+
+    for col, (icon, title, desc) in zip([f1, f2, f3], features):
+        with col:
+            st.markdown(f"""
+            <div class="feature-card">
+                <h3>{icon} &nbsp; {title}</h3>
+                <p>{desc}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div class="hero">
-        <h1>Explore Workshops</h1>
-        <p>Find a topic that interests you and start learning something new.</p>
+    <div class="info-banner">
+        <strong>💡 Start exploring today!</strong><br>
+        Choose a workshop that interests you or ask our assistant
+        for more information.
     </div>
     """, unsafe_allow_html=True)
 
-    for name, details in workshops.items():
+
+# -------------------- WORKSHOPS PAGE --------------------
+
+def workshops_page():
+
+    st.markdown("""
+    <div class="hero">
+        <span class="eyebrow">📚 FIND YOUR NEXT SKILL</span>
+        <h1>Explore <span class="gradient-text">Workshops.</span></h1>
+        <p>
+        Browse our featured technology workshops, discover what you can learn
+        and choose a topic that matches your interests.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    for name, data in WORKSHOPS.items():
+
         with st.container(border=True):
             left, right = st.columns([4, 1])
 
             with left:
-                st.subheader(f"{details['icon']} {name}")
-                st.write(details["description"])
+                st.markdown(
+                    f"### {data['icon']} {name}"
+                )
+                st.write(data["description"])
                 st.caption(
-                    f"Duration: {details['duration']}  ·  "
-                    f"Level: {details['level']}"
+                    f"🕒 {data['duration']}  ·  "
+                    f"🎯 {data['level']}  ·  "
+                    f"📘 {data['category'].title()}"
                 )
 
             with right:
                 st.write("")
-                st.write("")
-                if st.button("Register", key=f"reg_{name}"):
+                if st.button(
+                    "Register →",
+                    key=f"workshop_{name}",
+                    type="primary",
+                    use_container_width=True
+                ):
                     st.session_state.selected_workshop = name
-                    st.info(
-                        "Select **📝 Register** from the sidebar to "
-                        "complete the form for this workshop."
-                    )
+                    navigate("Register")
 
-# ---------- REGISTRATION ----------
-elif page == "📝 Register":
+
+# -------------------- REGISTRATION PAGE --------------------
+
+def register_page():
 
     st.markdown("""
     <div class="hero">
-        <h1>Workshop Registration</h1>
-        <p>Fill in the form below to try the registration process.</p>
+        <span class="eyebrow">📝 JOIN A WORKSHOP</span>
+        <h1>Start Your <span class="gradient-text">Journey.</span></h1>
+        <p>
+        Enter your details below to try our workshop registration process.
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    if st.session_state.registered:
-        st.success("Registration demo completed successfully! 🎉")
+    if st.session_state.registration:
+        data = st.session_state.registration
 
-        st.markdown("### Submission Summary")
-        st.write(f"**Name:** {st.session_state.registration_info['name']}")
-        st.write(f"**Email:** {st.session_state.registration_info['email']}")
-        st.write(f"**College:** {st.session_state.registration_info['college']}")
-        st.write(f"**Workshop:** {st.session_state.registration_info['workshop']}")
+        st.success("🎉 Demo registration completed successfully!")
+
+        st.markdown("### 📋 Registration Summary")
+
+        with st.container(border=True):
+            st.write(f"**👤 Name:** {data['name']}")
+            st.write(f"**📧 Email:** {data['email']}")
+            st.write(f"**🏫 College:** {data['college']}")
+            st.write(f"**📚 Workshop:** {data['workshop']}")
 
         st.info(
-            "This is a demonstration project. Registration details are not "
-            "saved to a database and will not be available as permanent records."
+            "This is a demo only. Registration details are kept temporarily "
+            "in the current app session and are not saved to a permanent database."
         )
 
-        if st.button("Start a New Demo Registration"):
-            st.session_state.registered = False
-            st.session_state.registration_info = None
+        if st.button("➕ Try Another Registration", type="primary"):
+            st.session_state.registration = None
             st.rerun()
 
-    else:
-        st.markdown("### 👤 Participant Information")
+        return
 
-        with st.form("registration_form"):
-            name = st.text_input("Full Name", placeholder="Enter your full name")
-            email = st.text_input("Email Address", placeholder="you@example.com")
-            college = st.text_input("College / Institution", placeholder="Enter your college")
+    st.markdown("### 👤 Participant Details")
 
-            selected_default = st.session_state.get(
-                "selected_workshop", "Python Programming"
-            )
+    selected = st.session_state.selected_workshop
+    names = list(WORKSHOPS.keys())
+    selected_index = names.index(selected) if selected in names else 0
 
-            workshop_names = list(workshops.keys())
-            default_index = (
-                workshop_names.index(selected_default)
-                if selected_default in workshop_names else 0
-            )
+    with st.form("registration_form"):
 
-            workshop = st.selectbox(
-                "Choose a Workshop",
-                workshop_names,
-                index=default_index
-            )
-
-            agree = st.checkbox(
-                "I understand this is a demonstration registration form."
-            )
-
-            submitted = st.form_submit_button("Submit Registration")
-
-            if submitted:
-                if not name.strip() or not email.strip() or not college.strip():
-                    st.error("Please complete all fields before submitting.")
-
-                elif not re.match(r"^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", email.strip()):
-                    st.error("Please enter a valid email address.")
-
-                elif not agree:
-                    st.warning("Please confirm that you understand this is a demo.")
-
-                else:
-                    st.session_state.registration_info = {
-                        "name": name.strip(),
-                        "email": email.strip(),
-                        "college": college.strip(),
-                        "workshop": workshop
-                    }
-                    st.session_state.registered = True
-                    st.rerun()
-
-        st.caption(
-            "Privacy note: This demo does not use a database or permanently "
-            "store registration submissions."
+        name = st.text_input(
+            "Full Name *",
+            placeholder="Enter your full name"
         )
 
-# ---------- CHATBOT ----------
-elif page == "🤖 AI Assistant":
+        email = st.text_input(
+            "Email Address *",
+            placeholder="you@example.com"
+        )
+
+        college = st.text_input(
+            "College / Institution *",
+            placeholder="Enter your college name"
+        )
+
+        workshop = st.selectbox(
+            "Select Workshop *",
+            names,
+            index=selected_index
+        )
+
+        confirmed = st.checkbox(
+            "I understand that this is a demonstration registration form."
+        )
+
+        submitted = st.form_submit_button(
+            "Submit Registration  →",
+            type="primary",
+            use_container_width=True
+        )
+
+        if submitted:
+
+            if not name.strip() or not email.strip() or not college.strip():
+                st.error("Please complete all required fields.")
+
+            elif not re.fullmatch(
+                r"[^@\s]+@[^@\s]+\.[^@\s]+",
+                email.strip()
+            ):
+                st.error("Please enter a valid email address.")
+
+            elif not confirmed:
+                st.warning("Please confirm that you understand this is a demo.")
+
+            else:
+                st.session_state.registration = {
+                    "name": name.strip(),
+                    "email": email.strip(),
+                    "college": college.strip(),
+                    "workshop": workshop
+                }
+                st.rerun()
+
+    st.caption(
+        "* Required fields. This demo does not permanently save your details."
+    )
+
+
+# -------------------- CHATBOT PAGE --------------------
+
+def assistant_page():
 
     st.markdown("""
     <div class="hero">
-        <h1>Workshop Assistant</h1>
-        <p>Ask questions about available workshops, registration, duration and certificates.</p>
+        <span class="eyebrow">🤖 WORKSHOP SUPPORT</span>
+        <h1>Meet Your <span class="gradient-text">Assistant.</span></h1>
+        <p>
+        Ask about workshop topics, duration, registration and other
+        frequently asked questions.
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### Try asking")
+    if not st.session_state.messages:
 
-    suggestions = [
-        "What workshops are available?",
-        "Tell me about Python",
-        "How do I register?",
-        "Are certificates available?"
-    ]
+        st.markdown("### 👋 Hello! How can I help you?")
 
-    suggestion_cols = st.columns(2)
+        suggestions = [
+            "📚 What workshops are available?",
+            "🐍 Tell me about Python",
+            "📝 How do I register?",
+            "🕒 What are the workshop durations?",
+            "🎓 Are certificates available?",
+            "💰 What are the workshop fees?"
+        ]
 
-    for i, suggestion in enumerate(suggestions):
-        with suggestion_cols[i % 2]:
-            if st.button(suggestion, key=f"suggestion_{i}"):
-                st.session_state.pending_question = suggestion
+        suggestion_cols = st.columns(2)
 
-    def get_response(question):
+        for i, suggestion in enumerate(suggestions):
+            with suggestion_cols[i % 2]:
+                if st.button(
+                    suggestion,
+                    key=f"question_{i}",
+                    use_container_width=True
+                ):
+                    st.session_state.pending_question = suggestion
+                    st.rerun()
+
+    def answer_question(question):
+
         q = question.lower()
 
-        if any(word in q for word in ["hello", "hi", "hey", "namaste"]):
+        if any(x in q for x in ["hello", "hi", "hey", "namaste"]):
             return (
-                "Hello! 👋 Welcome to WorkshopHub. I can help you explore "
-                "workshops, understand their duration and learn how to register."
+                "Hello! 👋 Welcome to WorkshopHub. "
+                "I can help you explore workshops, check durations "
+                "and understand the registration process."
             )
 
-        if "available" in q or "list" in q or "workshops" in q:
+        if "workshop" in q or "available" in q or "list" in q:
             return (
-                "We currently feature these workshops:\n\n"
-                + "\n".join(
-                    f"- {details['icon']} **{name}** — {details['duration']}"
-                    for name, details in workshops.items()
-                )
-                + "\n\nVisit **Explore Workshops** for more details."
+                "📚 **Our Featured Workshops**\n\n"
+                "- 🐍 Python Programming — 2 days\n"
+                "- 🤖 Artificial Intelligence — 3 days\n"
+                "- 💻 Web Development — 2 days\n"
+                "- 🔐 Cyber Security — 2 days\n\n"
+                "Visit the Workshops page to explore them."
             )
 
         if "python" in q:
             return (
                 "🐍 **Python Programming**\n\n"
-                "Learn variables, loops, functions and basic programming concepts. "
-                "Duration: **2 days**. Level: **Beginner**."
+                "Learn variables, loops, functions and problem-solving.\n\n"
+                "**Duration:** 2 days\n\n"
+                "**Level:** Beginner"
             )
 
-        if "artificial intelligence" in q or re.search(r"\\bai\\b", q):
+        if "artificial intelligence" in q or re.search(r"\bai\b", q):
             return (
                 "🤖 **Artificial Intelligence**\n\n"
-                "Explore AI fundamentals, intelligent systems and real-world "
-                "applications. Duration: **3 days**. Level: **Beginner**."
+                "Explore AI fundamentals, intelligent systems and "
+                "real-world applications.\n\n"
+                "**Duration:** 3 days"
             )
 
         if "web" in q or "website" in q:
             return (
                 "💻 **Web Development**\n\n"
-                "Discover HTML, CSS and JavaScript and learn how websites "
-                "are created. Duration: **2 days**."
+                "Explore HTML, CSS and JavaScript and learn how "
+                "modern websites are built.\n\n"
+                "**Duration:** 2 days"
             )
 
         if "cyber" in q or "security" in q:
             return (
                 "🔐 **Cyber Security**\n\n"
-                "Learn about online safety, cybersecurity fundamentals and "
-                "common digital threats. Duration: **2 days**."
+                "Learn about online safety, digital threats and "
+                "cybersecurity fundamentals.\n\n"
+                "**Duration:** 2 days"
             )
 
         if "register" in q or "registration" in q or "sign up" in q:
             return (
-                "📝 To try registering, open **Register** in the sidebar. "
-                "Fill in your name, email, college and selected workshop, "
-                "then submit the form. This demo does not permanently save details."
-            )
-
-        if "certificate" in q:
-            return (
-                "Certificate availability has not been configured for this demo. "
-                "Please confirm certificate details with the workshop organiser."
+                "📝 To try registering:\n\n"
+                "1. Open the **Register** page using the top navigation.\n"
+                "2. Enter your name, email and college.\n"
+                "3. Choose a workshop.\n"
+                "4. Confirm the demo notice and submit.\n\n"
+                "Note: This demo does not save details to a permanent database."
             )
 
         if "duration" in q or "long" in q or "days" in q:
             return (
-                "Workshop durations in this demo:\n\n"
+                "🕒 **Workshop Durations**\n\n"
                 "- Python Programming: 2 days\n"
                 "- Artificial Intelligence: 3 days\n"
                 "- Web Development: 2 days\n"
                 "- Cyber Security: 2 days"
             )
 
+        if "certificate" in q:
+            return (
+                "🎓 Certificate availability has not been configured "
+                "for this demo. Please confirm certificate details "
+                "with the actual workshop organiser."
+            )
+
         if "fee" in q or "price" in q or "cost" in q:
             return (
-                "Workshop fees have not been configured in this demo. "
+                "💰 Workshop fees have not been configured in this demo. "
                 "Please contact the workshop organiser for confirmed pricing."
             )
 
         if "thank" in q:
-            return "You're welcome! 😊 Feel free to ask anything about our workshops."
+            return "You're welcome! 😊 Feel free to ask another question."
 
         return (
-            "I can help with workshop details, duration, registration and "
-            "general FAQs. Try asking: 'Tell me about Python' or "
-            "'How do I register?'\n\n"
-            "Note: I'm a rule-based demo assistant, so I answer using predefined information."
+            "I can help you with workshops, duration, registration, "
+            "certificates and fees.\n\n"
+            "Try asking: **Tell me about Python** or "
+            "**How do I register?**\n\n"
+            "_I'm a rule-based demo assistant that uses predefined answers._"
         )
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    pending = st.session_state.pop("pending_question", None)
-    user_input = st.chat_input("Ask about workshops...")
+    pending = st.session_state.pending_question
+    st.session_state.pending_question = None
+
+    user_input = st.chat_input("💬 Ask me about workshops...")
 
     question = pending or user_input
 
     if question:
-        st.session_state.messages.append(
-            {"role": "user", "content": question}
-        )
+        st.session_state.messages.append({
+            "role": "user",
+            "content": question
+        })
 
-        answer = get_response(question)
+        response = answer_question(question)
 
-        st.session_state.messages.append(
-            {"role": "assistant", "content": answer}
-        )
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": response
+        })
 
         st.rerun()
 
-    if st.button("Clear Conversation"):
-        st.session_state.messages = []
-        st.rerun()
+    if st.session_state.messages:
+        if st.button("🗑️ Clear Conversation"):
+            st.session_state.messages = []
+            st.rerun()
 
-# ---------- FOOTER ----------
+
+# -------------------- PAGE ROUTER --------------------
+
+current_page = st.session_state.page
+
+if current_page == "Home":
+    home_page()
+
+elif current_page == "Workshops":
+    workshops_page()
+
+elif current_page == "Assistant":
+    assistant_page()
+
+elif current_page == "Register":
+    register_page()
+
+else:
+    home_page()
+
+# -------------------- FOOTER --------------------
+
 st.markdown("""
 <div class="footer">
-    WorkshopHub · Workshop Registration Assistant<br>
-    Academic Demonstration Project
+    <strong>🎓 WorkshopHub</strong><br>
+    Discover skills. Build your future.<br>
+    Academic Demonstration Project · 2026
 </div>
 """, unsafe_allow_html=True)
